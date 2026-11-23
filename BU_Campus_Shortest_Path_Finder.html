@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BU Campus Shortest Path Finder | IE211 Engineering Mathematics</title>
+
+  <!-- Google Fonts: Prompt (Thai), Inter (UI/Numbers), JetBrains Mono (Math/Code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            navy: {
+              950: '#090F1E',
+              900: '#0F172A',
+              800: '#1E293B',
+              700: '#334155',
+            },
+            coral: {
+              500: '#EF4444',
+              600: '#E63946',
+              700: '#DC2626',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Base typography & smooth scrolling */
+    body {
+      font-family: 'Prompt', 'Inter', sans-serif;
+      background-color: #F1F5F9;
+      color: #0F172A;
+    }
+
+    /* Animated dashed line along the shortest path in SVG */
+    @keyframes dashFlow {
+      to {
+        stroke-dashoffset: -28;
+      }
+    }
+
+    .path-animated {
+      stroke-dasharray: 10 4;
+      animation: dashFlow 0.85s linear infinite;
+    }
+
+    /* Subtle pulse ring for Start and Destination nodes */
+    @keyframes nodePulse {
+      0% {
+        transform: scale(1);
+        opacity: 0.75;
+      }
+      70% {
+        transform: scale(1.45);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1.45);
+        opacity: 0;
+      }
+    }
+
+    .pulse-ring {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: nodePulse 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    /* Interactive SVG Node hover transition */
+    .svg-node {
+      cursor: pointer;
+      transition: transform 0.18s ease, filter 0.18s ease;
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+
+    .svg-node:hover {
+      transform: scale(1.08);
+      filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.25));
+    }
+
+    /* Custom clean scrollbar for Dijkstra table */
+    .custom-scroll::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #F1F5F9;
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-coral-600 selection:text-white">
+
+  <!-- ==================== HEADER / NAVBAR ==================== -->
+  <header class="bg-navy-900 text-white border-b-4 border-coral-600 shadow-lg sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-center gap-3.5">
+        <!-- Diamond / Graph Logo SVG -->
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-coral-500 to-coral-700 flex items-center justify-center shadow-md shrink-0">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L3 9l9 13 9-13-9-7z" />
+            <circle cx="12" cy="10" r="2" fill="currentColor" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-semibold uppercase tracking-wider bg-coral-600/20 text-red-300 border border-coral-500/40 px-2.5 py-0.5 rounded-full">
+              IE211 Engineering Mathematics
+            </span>
+            <span class="text-xs text-slate-400 hidden sm:inline">Final Project Prototype</span>
+          </div>
+          <h1 class="text-lg sm:text-2xl font-bold tracking-tight text-white mt-0.5">
+            BU Campus Shortest Path Finder
+          </h1>
+        </div>
+      </div>
+
+      <!-- Quick Presenter Preset Button -->
+      <div class="flex items-center gap-2">
+        <button
+          id="presetBtn"
+          type="button"
+          class="inline-flex items-center gap-2 text-xs sm:text-sm font-medium bg-navy-800 hover:bg-navy-700 text-slate-100 border border-slate-600 px-3.5 py-2 rounded-xl transition active:scale-95"
+          title="โหลดตัวอย่างกรณีศึกษาในสไลด์นำเสนอ"
+        >
+          <svg class="w-4 h-4 text-coral-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span>เคสพรีเซนต์: หน้า ม. → ตึกวิศวะ B4</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+    <!-- Inline Status / Toast Notification (replaces alert()) -->
+    <div id="statusBanner" class="hidden rounded-2xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3 border transition-all">
+      <div class="flex items-center gap-2.5">
+        <span id="statusIcon"></span>
+        <span id="statusMessage"></span>
+      </div>
+      <button id="closeBannerBtn" type="button" class="text-current opacity-70 hover:opacity-100 p-1 rounded-lg">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- ==================== CONTROL PANEL ==================== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+      <div class="flex flex-col md:flex-row md:items-end gap-4">
+        <!-- Start Node Dropdown -->
+        <div class="flex-1">
+          <label for="startSelect" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+            จุดเริ่มต้น (Start Node)
+          </label>
+          <div class="relative">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 absolute left-3.5 top-1/2 -translate-y-1/2 ring-4 ring-emerald-100"></span>
+            <select
+              id="startSelect"
+              class="w-full pl-9 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm sm:text-base font-medium text-navy-900 focus:outline-none focus:ring-2 focus:ring-coral-600 focus:border-coral-600 transition cursor-pointer"
+            ></select>
+          </div>
+        </div>
+
+        <!-- Swap Button -->
+        <div class="flex justify-center md:pb-0.5">
+          <button
+            id="swapBtn"
+            type="button"
+            aria-label="สลับต้นทางและปลายทาง"
+            title="สลับต้นทาง - ปลายทาง (Swap)"
+            class="p-3 rounded-xl bg-slate-100 hover:bg-navy-900 hover:text-white text-navy-800 border border-slate-200 transition active:scale-95 flex items-center gap-1.5"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+            <span class="text-xs font-medium md:hidden">สลับต้นทาง-ปลายทาง</span>
+          </button>
+        </div>
+
+        <!-- Destination Node Dropdown -->
+        <div class="flex-1">
+          <label for="endSelect" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
+            จุดปลายทาง (Destination Node)
+          </label>
+          <div class="relative">
+            <span class="w-3 h-3 rounded-full bg-coral-600 absolute left-3.5 top-1/2 -translate-y-1/2 ring-4 ring-red-100"></span>
+            <select
+              id="endSelect"
+              class="w-full pl-9 pr-10 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm sm:text-base font-medium text-navy-900 focus:outline-none focus:ring-2 focus:ring-coral-600 focus:border-coral-600 transition cursor-pointer"
+            ></select>
+          </div>
+        </div>
+
+        <!-- Calculate Button -->
+        <div class="md:w-auto">
+          <button
+            id="findPathBtn"
+            type="button"
+            class="w-full md:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-coral-600 hover:bg-coral-700 text-white font-semibold text-sm sm:text-base shadow-md shadow-coral-600/25 transition active:scale-95"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            <span>คำนวณเส้นทาง</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SUMMARY CARDS ==================== -->
+    <section class="grid grid-cols-1 md:grid-cols-12 gap-4">
+      <!-- Optimal Path Sequence -->
+      <div class="md:col-span-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            ลำดับเส้นทางที่สั้นที่สุด (Optimal Path)
+          </span>
+          <span id="hopCountBadge" class="text-xs font-semibold bg-navy-900 text-white px-2.5 py-0.5 rounded-full">
+            0 ช่วงทางเดิน
+          </span>
+        </div>
+        <div id="pathSequence" class="flex flex-wrap items-center gap-2 text-sm font-medium text-navy-900">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Total Distance -->
+      <div class="md:col-span-3 bg-gradient-to-br from-navy-900 to-navy-800 text-white rounded-2xl shadow-sm p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            ระยะทางรวม (Distance)
+          </span>
+          <svg class="w-5 h-5 text-coral-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div class="mt-2 flex items-baseline gap-1.5">
+          <span id="totalDistanceValue" class="text-3xl sm:text-4xl font-bold tracking-tight">0</span>
+          <span class="text-sm font-medium text-slate-300">เมตร (m)</span>
+        </div>
+        <p id="edgeSumBreakdown" class="text-xs text-slate-400 font-mono mt-1 truncate">–</p>
+      </div>
+
+      <!-- Estimated Walking Time -->
+      <div class="md:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            เวลาเดินโดยประมาณ
+          </span>
+          <svg class="w-5 h-5 text-coral-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="mt-2 flex items-baseline gap-1.5">
+          <span class="text-sm font-medium text-slate-400">≈</span>
+          <span id="walkTimeValue" class="text-3xl sm:text-4xl font-bold tracking-tight text-coral-600">0.0</span>
+          <span class="text-sm font-medium text-slate-500">นาที</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">คำนวณที่ความเร็วเฉลี่ย 80 เมตร/นาที</p>
+      </div>
+    </section>
+
+    <!-- ==================== INTERACTIVE SVG CAMPUS GRAPH ==================== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <!-- Map Header & Click Mode Selector -->
+      <div class="px-5 py-4 border-b border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-navy-900 flex items-center gap-2">
+            <span>แผนที่เครือข่ายกราฟ ม.กรุงเทพ รังสิต (Interactive Weighted Graph)</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            คลิกที่โหนดบนแผนที่เพื่อเปลี่ยนจุดเริ่มต้นหรือจุดปลายทางได้ทันที • 8 จุดยอด (Vertices) • 12 เส้นเชื่อม (Edges)
+          </p>
+        </div>
+
+        <!-- Click Mode Toggle -->
+        <div class="inline-flex items-center bg-slate-200/80 p-1 rounded-xl self-start sm:self-auto">
+          <button
+            id="modeStartBtn"
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-emerald-700 shadow-sm"
+          >
+            ● คลิกเพื่อเลือกต้นทาง
+          </button>
+          <button
+            id="modeEndBtn"
+            type="button"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-navy-900"
+          >
+            ● คลิกเพื่อเลือกปลายทาง
+          </button>
+        </div>
+      </div>
+
+      <!-- SVG Canvas Container -->
+      <div class="p-3 sm:p-5 bg-gradient-to-b from-slate-50 to-white">
+        <div class="w-full overflow-x-auto">
+          <svg
+            id="campusSvg"
+            viewBox="0 0 940 440"
+            class="w-full h-auto min-w-[640px] select-none"
+            role="img"
+            aria-label="แผนที่กราฟมหาวิทยาลัยกรุงเทพ วิทยาเขตรังสิต"
+          >
+            <!-- Subtle Background Blueprint Grid -->
+            <defs>
+              <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#E2E8F0" stroke-width="0.8" />
+              </pattern>
+              <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            <rect width="940" height="440" rx="16" fill="#F8FAFC" />
+            <rect width="940" height="440" rx="16" fill="url(#gridPattern)" />
+
+            <!-- Direction indicator labels -->
+            <text x="24" y="30" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="0.06em">
+              ◀ ด้านหน้ามหาวิทยาลัย (ถนนพหลโยธิน)
+            </text>
+            <text x="916" y="30" text-anchor="end" fill="#94A3B8" font-size="11" font-weight="600" letter-spacing="0.06em">
+              ด้านหลังมหาวิทยาลัย (โซนตึก B / C / สนามกีฬา) ▶
+            </text>
+
+            <!-- Layer 1: Graph Edges -->
+            <g id="edgesLayer"></g>
+            <!-- Layer 2: Edge Weight Badges -->
+            <g id="weightsLayer"></g>
+            <!-- Layer 3: Graph Nodes -->
+            <g id="nodesLayer"></g>
+          </svg>
+        </div>
+
+        <!-- Map Legend -->
+        <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+          <div class="flex flex-wrap items-center gap-4">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow"></span>
+              <span>จุดเริ่มต้น (Start)</span>
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-3.5 h-3.5 rounded-full bg-coral-600 border-2 border-white shadow"></span>
+              <span>จุดปลายทาง (Destination)</span>
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-white shadow"></span>
+              <span>จุดทางผ่านในเส้นทางที่สั้นที่สุด</span>
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-3.5 h-3.5 rounded-full bg-navy-800 border-2 border-white shadow"></span>
+              <span>อาคารอื่นๆ</span>
+            </span>
+          </div>
+          <div class="inline-flex items-center gap-2 font-medium text-coral-600">
+            <span class="w-7 h-1 bg-coral-600 rounded-full inline-block"></span>
+            <span>เส้นทางที่สั้นที่สุด (Shortest Path Tree)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== MATHEMATICAL EVIDENCE (DIJKSTRA) ==================== -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 space-y-5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-coral-600">
+            Mathematical Evidence • Graph Theory &amp; Tree
+          </span>
+          <h2 class="text-lg sm:text-xl font-bold text-navy-900 mt-0.5">
+            หลักฐานการคำนวณทางคณิตศาสตร์ (Dijkstra's Algorithm)
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">
+            แบบจำลองกราฟแบบมีน้ำหนัก <span class="font-mono font-semibold text-navy-800">G = (V, E, w)</span> โดย <span class="font-mono">|V| = 8</span>, <span class="font-mono">|E| = 12</span> และทุกเส้นเชื่อมมีน้ำหนัก <span class="font-mono">w(u, v) &gt; 0</span>
+          </p>
+        </div>
+
+        <!-- Edge Relaxation Formula Box -->
+        <div class="bg-navy-900 text-white rounded-xl px-5 py-3.5 border-l-4 border-coral-500 shadow-sm shrink-0">
+          <div class="text-[11px] uppercase tracking-wider text-slate-400 mb-1">
+            Edge Relaxation Formula
+          </div>
+          <div class="font-mono text-sm sm:text-base font-semibold tracking-wide text-amber-300">
+            d(v) = min( d(v), d(u) + w(u, v) )
+          </div>
+        </div>
+      </div>
+
+      <!-- Final Shortest Distances Summary Pills (SPT from Start Node) -->
+      <div>
+        <h3 class="text-sm font-bold text-navy-900 mb-2.5 flex items-center gap-2">
+          <span>ค่าระยะทางสะสมสั้นที่สุด <span class="font-mono text-coral-600">d(v)</span> จากจุดเริ่มต้นไปยังทุกอาคาร</span>
+        </h3>
+        <div id="finalDistancesGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Step-by-Step Iteration Table -->
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2.5">
+          <h3 class="text-sm font-bold text-navy-900">
+            ตารางแสดงการอัปเดตค่าระยะทางสะสม <span class="font-mono text-coral-600">d(v)</span> ในแต่ละรอบ (Step-by-Step)
+          </h3>
+          <span class="text-xs text-slate-500">
+            สัญลักษณ์ <span class="font-semibold text-emerald-700">✓</span> = ยืนยันระยะทางสั้นที่สุดแล้ว • <span class="font-semibold text-coral-600">สีแดง</span> = ค่าที่เพิ่งถูกอัปเดตให้สั้นลงในรอบนั้น
+          </span>
+        </div>
+
+        <div class="overflow-x-auto custom-scroll rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr id="dijkstraTableHead" class="bg-navy-900 text-white">
+                <!-- Populated by JS -->
+              </tr>
+            </thead>
+            <tbody id="dijkstraTableBody" class="divide-y divide-slate-200">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-navy-900 text-slate-400 text-xs py-5 mt-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p class="text-slate-300 font-medium">
+        IE211 Engineering Mathematics — BU Campus Shortest Path Finder (Bangkok University Rangsit)
+      </p>
+      <p>
+        Powered by Graph Theory &amp; Dijkstra's Algorithm • Ready for GitHub Pages
+      </p>
+    </div>
+  </footer>
+
+  <!-- ==================== APPLICATION LOGIC ==================== -->
+  <script>
+    /**
+     * ============================================================================
+     * BU CAMPUS SHORTEST PATH FINDER — GRAPH DATA & DIJKSTRA ENGINE
+     * ============================================================================
+     * Weighted Undirected Graph G = (V, E, w) for Bangkok University (Rangsit).
+     */
+
+    // 1. Vertices (V): Campus locations with display names & SVG coordinates (left-to-right layout)
+    const NODES = [
+      { id: 'Main_Gate',   name: 'ประตูหน้า ม.กรุงเทพ (Main Gate)', short: 'ประตูหน้า ม.', sub: 'Main Gate',   x: 95,  y: 225 },
+      { id: 'BU_Diamond',  name: 'ตึกเพชร (BU Diamond)',            short: 'ตึกเพชร',      sub: 'BU Diamond',  x: 260, y: 105 },
+      { id: 'Library',     name: 'ห้องสมุด (Library)',              short: 'ห้องสมุด',     sub: 'Library',     x: 260, y: 345 },
+      { id: 'Bldg_A8',     name: 'ตึก A8',                          short: 'ตึก A8',       sub: 'Bldg A8',     x: 465, y: 105 },
+      { id: 'Canteen',     name: 'โรงอาหาร (Canteen)',              short: 'โรงอาหาร',     sub: 'Canteen',     x: 465, y: 345 },
+      { id: 'Bldg_B4_Eng', name: 'ตึกวิศวะ B4 (Engineering)',       short: 'ตึกวิศวะ B4',  sub: 'Engineering', x: 665, y: 135 },
+      { id: 'Bldg_C3',     name: 'ตึก C3',                          short: 'ตึก C3',       sub: 'Bldg C3',     x: 685, y: 335 },
+      { id: 'BU_Stadium',  name: 'สนามกีฬา (BU Stadium)',           short: 'สนามกีฬา',     sub: 'BU Stadium',  x: 850, y: 230 }
+    ];
+
+    // Quick lookup map by node ID
+    const NODE_MAP = Object.fromEntries(NODES.map((n) => [n.id, n]));
+
+    // 2. Edges (E) & Weights (w) in meters (Undirected)
+    const EDGES = [
+      { u: 'Main_Gate',   v: 'BU_Diamond',  w: 120 },
+      { u: 'Main_Gate',   v: 'Library',     w: 250 },
+      { u: 'BU_Diamond',  v: 'Library',     w: 180 },
+      { u: 'BU_Diamond',  v: 'Bldg_A8',     w: 220 },
+      { u: 'Library',     v: 'Canteen',     w: 150 },
+      { u: 'Bldg_A8',     v: 'Canteen',     w: 130 },
+      { u: 'Bldg_A8',     v: 'Bldg_B4_Eng', w: 200 },
+      { u: 'Canteen',     v: 'Bldg_B4_Eng', w: 160 },
+      { u: 'Canteen',     v: 'Bldg_C3',     w: 280 },
+      { u: 'Bldg_B4_Eng', v: 'Bldg_C3',     w: 190 },
+      { u: 'Bldg_B4_Eng', v: 'BU_Stadium',  w: 300 },
+      { u: 'Bldg_C3',     v: 'BU_Stadium',  w: 170 }
+    ];
+
+    // Average walking speed (meters per minute)
+    const WALK_SPEED_M_PER_MIN = 80;
+
+    // Build adjacency list for fast neighbor lookup
+    function buildAdjacencyList() {
+      const adj = {};
+      NODES.forEach((n) => { adj[n.id] = []; });
+      EDGES.forEach(({ u, v, w }) => {
+        adj[u].push({ to: v, w });
+        adj[v].push({ to: u, w });
+      });
+      return adj;
+    }
+
+    const ADJACENCY = buildAdjacencyList();
+
+    /**
+     * Runs Dijkstra's Algorithm from `startId` to `endId`.
+     * Records every iteration snapshot for the Mathematical Evidence table.
+     */
+    function runDijkstra(startId, endId) {
+      const dist = {};
+      const prev = {};
+      const visited = new Set();
+      const steps = [];
+
+      NODES.forEach((n) => {
+        dist[n.id] = Infinity;
+        prev[n.id] = null;
+      });
+      dist[startId] = 0;
+
+      for (let round = 1; round <= NODES.length; round++) {
+        // Select unvisited node u with minimum cumulative distance d(u)
+        let u = null;
+        let minDist = Infinity;
+        for (const node of NODES) {
+          if (!visited.has(node.id) && dist[node.id] < minDist) {
+            minDist = dist[node.id];
+            u = node.id;
+          }
+        }
+
+        if (u === null) break;
+
+        visited.add(u);
+        const updatedInRound = {};
+
+        // Relax all outgoing edges (u, v) using d(v) = min(d(v), d(u) + w(u, v))
+        for (const { to: v, w } of ADJACENCY[u]) {
+          if (!visited.has(v)) {
+            const candidate = dist[u] + w;
+            if (candidate < dist[v]) {
+              const oldVal = dist[v];
+              dist[v] = candidate;
+              prev[v] = u;
+              updatedInRound[v] = { oldVal, newVal: candidate };
+            }
+          }
+        }
+
+        // Store immutable snapshot for this round
+        steps.push({
+          round,
+          selectedNode: u,
+          selectedDist: dist[u],
+          distances: { ...dist },
+          visited: new Set(visited),
+          updatedInRound,
+          isTargetReached: u === endId
+        });
+      }
+
+      // Backtrack from endId to startId to reconstruct the optimal path
+      const path = [];
+      let curr = endId;
+      while (curr !== null) {
+        path.unshift(curr);
+        if (curr === startId) break;
+        curr = prev[curr];
+      }
+
+      // Collect edge weights along the optimal path
+      const pathEdges = [];
+      const edgeWeights = [];
+      for (let i = 0; i < path.length - 1; i++) {
+        const a = path[i];
+        const b = path[i + 1];
+        const edgeObj = EDGES.find((e) => (e.u === a && e.v === b) || (e.u === b && e.v === a));
+        if (edgeObj) {
+          pathEdges.push({ u: a, v: b, w: edgeObj.w });
+          edgeWeights.push(edgeObj.w);
+        }
+      }
+
+      return {
+        startId,
+        endId,
+        path,
+        pathEdges,
+        edgeWeights,
+        totalDistance: dist[endId],
+        walkTimeMin: dist[endId] / WALK_SPEED_M_PER_MIN,
+        finalDistances: dist,
+        steps
+      };
+    }
+
+    // ==================== APPLICATION STATE & DOM REFS ====================
+    const state = {
+      startId: 'Main_Gate',
+      endId: 'Bldg_B4_Eng',
+      clickMode: 'start' // 'start' | 'end'
+    };
+
+    const startSelect = document.getElementById('startSelect');
+    const endSelect = document.getElementById('endSelect');
+    const swapBtn = document.getElementById('swapBtn');
+    const findPathBtn = document.getElementById('findPathBtn');
+    const presetBtn = document.getElementById('presetBtn');
+    const modeStartBtn = document.getElementById('modeStartBtn');
+    const modeEndBtn = document.getElementById('modeEndBtn');
+
+    const statusBanner = document.getElementById('statusBanner');
+    const statusIcon = document.getElementById('statusIcon');
+    const statusMessage = document.getElementById('statusMessage');
+    const closeBannerBtn = document.getElementById('closeBannerBtn');
+
+    const edgesLayer = document.getElementById('edgesLayer');
+    const weightsLayer = document.getElementById('weightsLayer');
+    const nodesLayer = document.getElementById('nodesLayer');
+
+    const pathSequenceEl = document.getElementById('pathSequence');
+    const hopCountBadge = document.getElementById('hopCountBadge');
+    const totalDistanceEl = document.getElementById('totalDistanceValue');
+    const edgeSumBreakdownEl = document.getElementById('edgeSumBreakdown');
+    const walkTimeEl = document.getElementById('walkTimeValue');
+
+    const finalDistancesGrid = document.getElementById('finalDistancesGrid');
+    const dijkstraTableHead = document.getElementById('dijkstraTableHead');
+    const dijkstraTableBody = document.getElementById('dijkstraTableBody');
+
+    // Helper: create SVG element in proper namespace
+    function createSvgEl(tag, attrs = {}) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        el.setAttribute(k, v);
+      }
+      return el;
+    }
+
+    // Helper: show inline status banner (no alert())
+    let bannerTimer = null;
+    function showBanner(message, type = 'info') {
+      clearTimeout(bannerTimer);
+      statusBanner.classList.remove(
+        'hidden',
+        'bg-amber-50', 'border-amber-300', 'text-amber-900',
+        'bg-emerald-50', 'border-emerald-300', 'text-emerald-900',
+        'bg-sky-50', 'border-sky-300', 'text-sky-900'
+      );
+
+      if (type === 'warning') {
+        statusBanner.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
+        statusIcon.textContent = '⚠️';
+      } else if (type === 'success') {
+        statusBanner.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
+        statusIcon.textContent = '✅';
+      } else {
+        statusBanner.classList.add('bg-sky-50', 'border-sky-300', 'text-sky-900');
+        statusIcon.textContent = 'ℹ️';
+      }
+
+      statusMessage.textContent = message;
+      bannerTimer = setTimeout(() => {
+        statusBanner.classList.add('hidden');
+      }, 4000);
+    }
+
+    // Populate dropdown selects
+    function populateDropdowns() {
+      startSelect.innerHTML = '';
+      endSelect.innerHTML = '';
+
+      NODES.forEach((node) => {
+        const opt1 = document.createElement('option');
+        opt1.value = node.id;
+        opt1.textContent = node.name;
+        startSelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = node.id;
+        opt2.textContent = node.name;
+        endSelect.appendChild(opt2);
+      });
+
+      startSelect.value = state.startId;
+      endSelect.value = state.endId;
+    }
+
+    // Update map click-mode toggle UI
+    function setClickMode(mode) {
+      state.clickMode = mode;
+      if (mode === 'start') {
+        modeStartBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-emerald-700 shadow-sm';
+        modeEndBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-navy-900';
+      } else {
+        modeEndBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-white text-coral-600 shadow-sm';
+        modeStartBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-600 hover:text-navy-900';
+      }
+    }
+
+    /**
+     * Render Interactive SVG Map with edges, weight pills, animated shortest path, and clickable nodes.
+     */
+    function renderGraph(result) {
+      edgesLayer.innerHTML = '';
+      weightsLayer.innerHTML = '';
+      nodesLayer.innerHTML = '';
+
+      // Build set of edge keys in the shortest path for quick check
+      const pathEdgeSet = new Set();
+      result.pathEdges.forEach(({ u, v }) => {
+        pathEdgeSet.add(`${u}|${v}`);
+        pathEdgeSet.add(`${v}|${u}`);
+      });
+
+      const pathNodeSet = new Set(result.path);
+
+      // 1. Draw all edges (base edges first, then highlighted shortest path on top)
+      EDGES.forEach(({ u, v, w }) => {
+        const n1 = NODE_MAP[u];
+        const n2 = NODE_MAP[v];
+        const isPathEdge = pathEdgeSet.has(`${u}|${v}`);
+
+        // Base edge line
+        const baseLine = createSvgEl('line', {
+          x1: n1.x,
+          y1: n1.y,
+          x2: n2.x,
+          y2: n2.y,
+          stroke: isPathEdge ? '#FCA5A5' : '#CBD5E1',
+          'stroke-width': isPathEdge ? 8 : 3.5,
+          'stroke-linecap': 'round'
+        });
+        edgesLayer.appendChild(baseLine);
+
+        // Edge weight badge positioned at midpoint
+        const mx = (n1.x + n2.x) / 2;
+        const my = (n1.y + n2.y) / 2;
+
+        const badgeGroup = createSvgEl('g');
+        const pillBg = createSvgEl('rect', {
+          x: mx - 24,
+          y: my - 11,
+          width: 48,
+          height: 22,
+          rx: 11,
+          fill: isPathEdge ? '#E63946' : '#FFFFFF',
+          stroke: isPathEdge ? '#B91C1C' : '#CBD5E1',
+          'stroke-width': isPathEdge ? 1.5 : 1.2
+        });
+
+        const pillText = createSvgEl('text', {
+          x: mx,
+          y: my + 4,
+          'text-anchor': 'middle',
+          fill: isPathEdge ? '#FFFFFF' : '#475569',
+          'font-size': '11',
+          'font-weight': isPathEdge ? '700' : '600',
+          'font-family': 'Inter, Prompt, sans-serif'
+        });
+        pillText.textContent = `${w} ม.`;
+
+        badgeGroup.appendChild(pillBg);
+        badgeGroup.appendChild(pillText);
+        weightsLayer.appendChild(badgeGroup);
+      });
+
+      // 2. Overlay animated dashed red path in the exact direction from Start -> End
+      result.pathEdges.forEach(({ u, v }) => {
+        const n1 = NODE_MAP[u];
+        const n2 = NODE_MAP[v];
+
+        const activeLine = createSvgEl('line', {
+          x1: n1.x,
+          y1: n1.y,
+          x2: n2.x,
+          y2: n2.y,
+          stroke: '#E63946',
+          'stroke-width': 4.5,
+          'stroke-linecap': 'round',
+          class: 'path-animated',
+          filter: 'url(#glowRed)'
+        });
+        edgesLayer.appendChild(activeLine);
+      });
+
+      // 3. Draw all interactive nodes
+      NODES.forEach((node) => {
+        const isStart = node.id === result.startId;
+        const isEnd = node.id === result.endId;
+        const isOnPath = pathNodeSet.has(node.id);
+
+        const g = createSvgEl('g', {
+          class: 'svg-node',
+          'data-node-id': node.id,
+          role: 'button',
+          tabindex: '0',
+          'aria-label': `เลือก ${node.name}`
+        });
+
+        // Pulse ring on Start and Destination
+        if (isStart || isEnd) {
+          const ring = createSvgEl('circle', {
+            cx: node.x,
+            cy: node.y,
+            r: 25,
+            fill: 'none',
+            stroke: isStart ? '#10B981' : '#E63946',
+            'stroke-width': 3,
+            class: 'pulse-ring'
+          });
+          g.appendChild(ring);
+        }
+
+        // Determine node colors
+        let fillColor = '#1E293B';
+        let strokeColor = '#FFFFFF';
+        let textColor = '#FFFFFF';
+        if (isStart && isEnd) {
+          fillColor = '#E63946';
+          strokeColor = '#10B981';
+        } else if (isStart) {
+          fillColor = '#10B981';
+          strokeColor = '#ECFDF5';
+        } else if (isEnd) {
+          fillColor = '#E63946';
+          strokeColor = '#FEF2F2';
+        } else if (isOnPath) {
+          fillColor = '#F59E0B';
+          strokeColor = '#FFFBEB';
+        }
+
+        // Main circle
+        const circle = createSvgEl('circle', {
+          cx: node.x,
+          cy: node.y,
+          r: isStart || isEnd ? 24 : 21,
+          fill: fillColor,
+          stroke: strokeColor,
+          'stroke-width': 3.5
+        });
+        g.appendChild(circle);
+
+        // Distance d(v) inside circle for quick mathematical visual
+        const dVal = result.finalDistances[node.id];
+        const innerLabel = createSvgEl('text', {
+          x: node.x,
+          y: node.y + 4,
+          'text-anchor': 'middle',
+          fill: textColor,
+          'font-size': '11',
+          'font-weight': '700',
+          'font-family': 'JetBrains Mono, monospace'
+        });
+        innerLabel.textContent = dVal === Infinity ? '∞' : `${dVal}`;
+        g.appendChild(innerLabel);
+
+        // Node name label positioned cleanly above (for top row) or below (for bottom/middle row)
+        const labelAbove = node.y < 150;
+        const labelY = labelAbove ? node.y - 34 : node.y + 40;
+        const subY = labelAbove ? node.y - 49 : node.y + 55;
+
+        // Label white halo for readability over grid
+        const titleText = createSvgEl('text', {
+          x: node.x,
+          y: labelY,
+          'text-anchor': 'middle',
+          fill: isStart ? '#047857' : isEnd ? '#B91C1C' : '#0F172A',
+          'font-size': '13',
+          'font-weight': isOnPath ? '700' : '600',
+          stroke: '#F8FAFC',
+          'stroke-width': '4',
+          'paint-order': 'stroke'
+        });
+        titleText.textContent = node.short;
+        g.appendChild(titleText);
+
+        const subText = createSvgEl('text', {
+          x: node.x,
+          y: subY,
+          'text-anchor': 'middle',
+          fill: '#64748B',
+          'font-size': '10.5',
+          'font-weight': '500',
+          stroke: '#F8FAFC',
+          'stroke-width': '3',
+          'paint-order': 'stroke'
+        });
+        subText.textContent = isStart && isEnd
+          ? 'ต้นทาง / ปลายทาง'
+          : isStart
+          ? 'START • ' + node.sub
+          : isEnd
+          ? 'GOAL • ' + node.sub
+          : node.sub;
+        g.appendChild(subText);
+
+        // Click / Keyboard handler to select Start or Destination directly on map
+        const handleNodeSelect = () => {
+          if (state.clickMode === 'start') {
+            state.startId = node.id;
+            startSelect.value = node.id;
+            showBanner(`ตั้งจุดเริ่มต้นเป็น "${node.name}" แล้ว (คลิกโหนดถัดไปเพื่อเลือกปลายทาง)`, 'success');
+            setClickMode('end');
+          } else {
+            state.endId = node.id;
+            endSelect.value = node.id;
+            showBanner(`ตั้งจุดปลายทางเป็น "${node.name}" แล้ว`, 'success');
+            setClickMode('start');
+          }
+          calculateAndRender();
+        };
+
+        g.addEventListener('click', handleNodeSelect);
+        g.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleNodeSelect();
+          }
+        });
+
+        nodesLayer.appendChild(g);
+      });
+    }
+
+    /**
+     * Render Summary Result Cards (Path Sequence, Total Distance, Estimated Walking Time)
+     */
+    function renderSummary(result) {
+      // Path sequence badges
+      pathSequenceEl.innerHTML = '';
+      result.path.forEach((nodeId, idx) => {
+        const node = NODE_MAP[nodeId];
+        const isStart = idx === 0;
+        const isEnd = idx === result.path.length - 1;
+
+        const chip = document.createElement('span');
+        chip.className = isStart
+          ? 'inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-xs sm:text-sm'
+          : isEnd
+          ? 'inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-red-50 text-coral-700 border border-red-200 font-semibold text-xs sm:text-sm'
+          : 'inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 font-medium text-xs sm:text-sm';
+        chip.textContent = node.short;
+        pathSequenceEl.appendChild(chip);
+
+        if (idx < result.path.length - 1) {
+          const arrow = document.createElement('span');
+          arrow.className = 'text-slate-400 font-bold text-xs';
+          arrow.textContent = '→';
+          pathSequenceEl.appendChild(arrow);
+        }
+      });
+
+      const hops = result.pathEdges.length;
+      hopCountBadge.textContent = hops === 0 ? 'จุดเดียวกัน' : `${hops} ช่วงทางเดิน`;
+
+      totalDistanceEl.textContent = result.totalDistance.toLocaleString('th-TH');
+      edgeSumBreakdownEl.textContent = hops === 0
+        ? 'อยู่ที่จุดปลายทางแล้ว (0 ม.)'
+        : `${result.edgeWeights.join(' + ')} = ${result.totalDistance} ม.`;
+
+      walkTimeEl.textContent = result.walkTimeMin.toFixed(1);
+    }
+
+    /**
+     * Render Mathematical Evidence: Final d(v) Cards & Step-by-Step Dijkstra Table
+     */
+    function renderDijkstraEvidence(result) {
+      // 1. Final d(v) grid cards
+      finalDistancesGrid.innerHTML = '';
+      NODES.forEach((node) => {
+        const dVal = result.finalDistances[node.id];
+        const isStart = node.id === result.startId;
+        const isEnd = node.id === result.endId;
+
+        const card = document.createElement('div');
+        card.className = isEnd
+          ? 'rounded-xl p-3 border-2 border-coral-600 bg-red-50/70 text-center'
+          : isStart
+          ? 'rounded-xl p-3 border-2 border-emerald-500 bg-emerald-50/70 text-center'
+          : 'rounded-xl p-3 border border-slate-200 bg-slate-50 text-center';
+
+        card.innerHTML = `
+          <div class="text-[11px] font-semibold text-slate-600 truncate" title="${node.name}">${node.short}</div>
+          <div class="font-mono text-base font-bold mt-0.5 ${isEnd ? 'text-coral-600' : isStart ? 'text-emerald-700' : 'text-navy-900'}">
+            ${dVal === Infinity ? '∞' : dVal + ' ม.'}
+          </div>
+        `;
+        finalDistancesGrid.appendChild(card);
+      });
+
+      // 2. Step-by-step Table Header
+      dijkstraTableHead.innerHTML = `
+        <th class="px-3 py-3 font-semibold text-center whitespace-nowrap">รอบที่</th>
+        <th class="px-3 py-3 font-semibold whitespace-nowrap">โหนดที่เลือก u (d(u))</th>
+        ${NODES.map((n) => `
+          <th class="px-3 py-3 font-semibold text-center whitespace-nowrap ${n.id === result.endId ? 'bg-coral-700 text-white' : ''}">
+            ${n.short}
+          </th>
+        `).join('')}
+      `;
+
+      // 3. Step-by-step Table Body
+      dijkstraTableBody.innerHTML = '';
+      result.steps.forEach((step) => {
+        const tr = document.createElement('tr');
+        tr.className = step.isTargetReached
+          ? 'bg-red-50/80 font-medium'
+          : 'hover:bg-slate-50 transition-colors';
+
+        const selectedObj = NODE_MAP[step.selectedNode];
+
+        let rowHtml = `
+          <td class="px-3 py-2.5 text-center font-mono font-semibold text-slate-600">${step.round}</td>
+          <td class="px-3 py-2.5 whitespace-nowrap">
+            <div class="flex items-center gap-1.5">
+              <span class="font-semibold text-navy-900">${selectedObj.short}</span>
+              <span class="font-mono text-xs text-slate-500">(${step.selectedDist})</span>
+              ${step.isTargetReached
+                ? '<span class="ml-1 text-[10px] font-bold bg-coral-600 text-white px-2 py-0.5 rounded-full">ถึงปลายทาง ✓</span>'
+                : ''}
+            </div>
+          </td>
+        `;
+
+        NODES.forEach((n) => {
+          const val = step.distances[n.id];
+          const isVisited = step.visited.has(n.id);
+          const wasUpdated = Boolean(step.updatedInRound[n.id]);
+          const isTargetCol = n.id === result.endId;
+
+          let cellText = val === Infinity ? '∞' : `${val}`;
+          if (isVisited) cellText += ' ✓';
+
+          let cellClass = 'px-3 py-2.5 text-center font-mono whitespace-nowrap ';
+          if (wasUpdated) {
+            cellClass += 'text-coral-600 font-bold bg-red-100/60';
+          } else if (isVisited && isTargetCol) {
+            cellClass += 'text-coral-700 font-bold';
+          } else if (isVisited) {
+            cellClass += 'text-emerald-700 font-semibold';
+          } else if (val === Infinity) {
+            cellClass += 'text-slate-400';
+          } else {
+            cellClass += 'text-slate-700';
+          }
+
+          rowHtml += `<td class="${cellClass}">${cellText}</td>`;
+        });
+
+        tr.innerHTML = rowHtml;
+        dijkstraTableBody.appendChild(tr);
+      });
+    }
+
+    /**
+     * Master update function: runs Dijkstra and refreshes all UI components.
+     */
+    function calculateAndRender() {
+      try {
+        state.startId = startSelect.value;
+        state.endId = endSelect.value;
+
+        if (state.startId === state.endId) {
+          showBanner('จุดเริ่มต้นและจุดปลายทางเป็นสถานที่เดียวกัน (ระยะทางรวม = 0 เมตร)', 'warning');
+        }
+
+        const result = runDijkstra(state.startId, state.endId);
+        renderGraph(result);
+        renderSummary(result);
+        renderDijkstraEvidence(result);
+      } catch (err) {
+        console.error('Calculation error:', err);
+        showBanner('เกิดข้อผิดพลาดในการคำนวณเส้นทาง กรุณาลองใหม่อีกครั้ง', 'warning');
+      }
+    }
+
+    // ==================== EVENT LISTENERS ====================
+    findPathBtn.addEventListener('click', () => {
+      calculateAndRender();
+      if (state.startId !== state.endId) {
+        showBanner(
+          `คำนวณเส้นทางที่สั้นที่สุดจาก "${NODE_MAP[state.startId].short}" ไปยัง "${NODE_MAP[state.endId].short}" เรียบร้อยแล้ว`,
+          'success'
+        );
+      }
+    });
+
+    startSelect.addEventListener('change', calculateAndRender);
+    endSelect.addEventListener('change', calculateAndRender);
+
+    swapBtn.addEventListener('click', () => {
+      const temp = startSelect.value;
+      startSelect.value = endSelect.value;
+      endSelect.value = temp;
+      calculateAndRender();
+    });
+
+    presetBtn.addEventListener('click', () => {
+      startSelect.value = 'Main_Gate';
+      endSelect.value = 'Bldg_B4_Eng';
+      calculateAndRender();
+      showBanner('โหลดกรณีศึกษาพรีเซนต์: ประตูหน้า ม.กรุงเทพ → ตึกวิศวะ B4 (540 ม.)', 'info');
+    });
+
+    modeStartBtn.addEventListener('click', () => setClickMode('start'));
+    modeEndBtn.addEventListener('click', () => setClickMode('end'));
+    closeBannerBtn.addEventListener('click', () => statusBanner.classList.add('hidden'));
+
+    // ==================== INITIALIZE ON LOAD ====================
+    window.addEventListener('DOMContentLoaded', () => {
+      populateDropdowns();
+      calculateAndRender();
+    });
+  </script>
+</body>
+</html>
